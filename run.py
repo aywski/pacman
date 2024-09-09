@@ -1,11 +1,7 @@
-import math
-import random
 import pygame
 import sys
 from maze import maze
 from constants import *
-import heapq
-from typing import List, Tuple, Dict
 from pacman import PacMan
 from ghost import Ghost
 
@@ -30,17 +26,6 @@ def draw_points(screen, points):
     y = screen_height - text_rect.height - int(10 * SCALE_FACTOR)
 
     screen.blit(points_text, (x, y))
-
-class Node:
-    def __init__(self, position: Tuple[int, int], g: int = 0, h: int = 0):
-        self.position = position
-        self.g = g
-        self.h = h
-        self.f = g + h
-        self.parent = None
-
-    def __lt__(self, other):
-        return self.f < other.f
 
 def game_over(screen, won):
     # Выбор шрифта и цвета текста
@@ -127,6 +112,7 @@ def main():
     clock = pygame.time.Clock()
     pacman = PacMan(maze)
     ghost = Ghost(maze, 60, CLYDE)
+    ghost2 = Ghost(maze, 60, INKY)
 
     deathSound = pygame.mixer.Sound(DEATHSOUND)
     deathSound.set_volume(0.2)
@@ -155,16 +141,6 @@ def main():
                     pacman.set_direction(0, -PACMAN_SPEED)
                 elif event.key == pygame.K_DOWN:
                     pacman.set_direction(0, PACMAN_SPEED)
-
-                # Управление привидением на клавиши WASD
-                elif event.key == pygame.K_w:
-                    ghost.set_direction(0, -PACMAN_SPEED)
-                elif event.key == pygame.K_a:
-                    ghost.set_direction(-PACMAN_SPEED, 0)
-                elif event.key == pygame.K_s:
-                    ghost.set_direction(0, PACMAN_SPEED)
-                elif event.key == pygame.K_d:
-                    ghost.set_direction(PACMAN_SPEED, 0)
                     
         if pacman.is_dead:
             if not soundPlayed:

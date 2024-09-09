@@ -307,3 +307,14 @@ class Node:
 
     def __lt__(self, other):
         return self.f < other.f
+    
+class Node:
+    def __init__(self, position: Tuple[int, int], g: int = 0, h: int = 0):
+        self.position = position
+        self.g = g
+        self.h = h
+        self.f = g + h
+        self.parent = None
+
+    def __lt__(self, other):
+        return self.f < other.f
