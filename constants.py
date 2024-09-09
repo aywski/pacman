@@ -12,8 +12,13 @@ FONT = "fonts/Retro Gaming.ttf"
 
 PACMAN_MOVING_PATH = 'sprites/pacman.png'
 PACMAN_DEATH_PATH = 'sprites/pacman_death.png'
-PINKY_MOVING_PATH = 'sprites/pinky.png'
+
 GHOST_DEATH_PATH = 'sprites/frightened_1.png'
+
+PINKY = 'sprites/pinky.png'
+BLINKY = 'sprites/blinky.png'
+CLYDE = 'sprites/clyde.png'
+INKY = 'sprites/inky.png'
 
 EAT_DOT_1 = "sounds/eat_dot_1.wav"
 EAT_DOT_0 = "sounds/eat_dot_0.wav"
