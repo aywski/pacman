@@ -1,4 +1,5 @@
 import random
+from constants import MAZE_DIFFICULTY
 
 def generate_maze(width, height, diff="medium"):
     # Определяем сложность
@@ -51,7 +52,7 @@ def generate_maze(width, height, diff="medium"):
     return maze
 
 # Пример использования
-maze = generate_maze(27, 29, diff="hard")
+maze = generate_maze(27, 29, diff=MAZE_DIFFICULTY)
 
 # Печать лабиринта
 for row in maze:

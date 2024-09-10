@@ -7,6 +7,7 @@ GHOST_SPEED = PACMAN_SPEED * 20
 SPRITE_SIZE = int(13 * SCALE_FACTOR)
 ANIMATION_SPEED = 0.05
 LIVES = 3
+MAZE_DIFFICULTY = "medium" # easy/medium/hard
 
 FONT = "fonts/Retro Gaming.ttf"
 

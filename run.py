@@ -1,13 +1,12 @@
+import time
 import pygame
 import sys
-from maze import maze
+from maze import generate_maze
 from constants import *
 from pacman import PacMan
 from ghost import Ghost
 
-pygame.init()
-
-def draw_maze(screen):
+def draw_maze(screen, maze):
     for y, row in enumerate(maze):
         for x, cell in enumerate(row):
             if cell == 1:
@@ -63,7 +62,7 @@ def game_over(screen, won):
         pygame.display.flip()
 
 
-def start_game_timer(pacman, clock, screen, time):
+def start_game_timer(pacman, screen, time, maze):
     def draw_timer(screen, time_left):
         font = pygame.font.Font(FONT, int(72 * SCALE_FACTOR))  # Большой шрифт для таймера
         timer_text = font.render(str(time_left), True, WHITE)
@@ -81,7 +80,7 @@ def start_game_timer(pacman, clock, screen, time):
 
         # Отрисовка всех элементов игры (но они заморожены)
         screen.fill(BLACK)
-        draw_maze(screen)
+        draw_maze(screen, maze)
         pacman.draw(screen)  # Пакмен уже виден на экране
         draw_points(screen, pacman.points)
 
@@ -96,6 +95,10 @@ def start_game_timer(pacman, clock, screen, time):
             if event.type == pygame.QUIT:
                 pygame.quit()
                 sys.exit()
+            elif event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_r:
+                    pygame.quit()
+                    main()
 
 def draw_lives(screen, lives):
     for i in range(lives):
@@ -104,8 +107,10 @@ def draw_lives(screen, lives):
         pygame.draw.circle(screen, YELLOW, (x, y), int(GRID_SIZE // 1.5))
 
 def main():
+    pygame.init()
     pygame.display.set_caption("pacman by aywski")
     pygame.display.set_icon(pygame.image.load("sprites/pacman.ico"))
+    maze = generate_maze(27, 29, diff=MAZE_DIFFICULTY)
     screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
     clock = pygame.time.Clock()
     pacman = PacMan(maze)
@@ -124,7 +129,7 @@ def main():
     # Основной игровой цикл после завершения отсчёта
     soundPlayed = False
 
-    start_game_timer(pacman, clock, screen, 3)
+    start_game_timer(pacman, screen, 3, maze)
 
     while True:
         dt = clock.tick(FPS) / 1000
@@ -142,6 +147,8 @@ def main():
                     pacman.set_direction(0, -PACMAN_SPEED)
                 elif event.key == pygame.K_DOWN:
                     pacman.set_direction(0, PACMAN_SPEED)
+                elif event.key == pygame.K_r:
+                    main()
                     
         if pacman.is_dead:
             if not soundPlayed:
@@ -150,7 +157,7 @@ def main():
             pacman.update(dt)
             ghost.update(dt, pacman)
             screen.fill(BLACK)
-            draw_maze(screen)
+            draw_maze(screen, maze)
             pacman.draw(screen)
             ghost.draw(screen)
             draw_points(screen, pacman.points)
@@ -180,7 +187,7 @@ def main():
                 game_over(screen, True)
 
         screen.fill(BLACK)
-        draw_maze(screen)
+        draw_maze(screen, maze)
         pacman.draw(screen)
         ghost.draw(screen)
         draw_points(screen, pacman.points)
