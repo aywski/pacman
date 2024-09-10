@@ -78,7 +78,6 @@ def start_game_timer(pacman, clock, screen, time):
     # Основной игровой цикл с обратным отсчётом и заморозкой игры
     pacman.set_direction(PACMAN_SPEED, 0)
     while countdown > -1:
-        dt = clock.tick(FPS) / 1000
 
         # Отрисовка всех элементов игры (но они заморожены)
         screen.fill(BLACK)
