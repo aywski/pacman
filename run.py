@@ -65,7 +65,6 @@ def game_over(screen, won):
 
 def start_game_timer(pacman, clock, screen, time):
     def draw_timer(screen, time_left):
-        """Отображает таймер на фоне."""
         font = pygame.font.Font(FONT, int(72 * SCALE_FACTOR))  # Большой шрифт для таймера
         timer_text = font.render(str(time_left), True, WHITE)
         text_rect = timer_text.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2))  # Центрируем текст
@@ -74,7 +73,7 @@ def start_game_timer(pacman, clock, screen, time):
     # Таймер перед началом игры
     countdown = time  # 5 секунд отсчета
     countdown_start_time = pygame.time.get_ticks()
-    pygame.mixer.Sound(STARTSOUND).set_volume(0.2)
+    pygame.mixer.Sound(STARTSOUND).play().set_volume(0.2)
 
     # Основной игровой цикл с обратным отсчётом и заморозкой игры
     pacman.set_direction(PACMAN_SPEED, 0)
@@ -125,6 +124,9 @@ def main():
 
     # Основной игровой цикл после завершения отсчёта
     soundPlayed = False
+
+    start_game_timer(pacman, clock, screen, 3)
+
     while True:
         dt = clock.tick(FPS) / 1000
 
