@@ -114,8 +114,11 @@ def main():
     screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
     clock = pygame.time.Clock()
     pacman = PacMan(maze)
-    ghost = Ghost(maze, 60, CLYDE)
-    ghost2 = Ghost(maze, 60, INKY)
+    ghost = Ghost(maze, 60, CLYDE, pathfinding_method='a_star')
+    ghost2 = Ghost(maze, 60, PINKY, pathfinding_method='greedy')
+    # ghost3 = Ghost(maze, 60, INKY)
+    # ghost4 = Ghost(maze, 60, BLINKY)
+
 
     deathSound = pygame.mixer.Sound(DEATHSOUND)
     deathSound.set_volume(0.2)
@@ -129,7 +132,7 @@ def main():
     # Основной игровой цикл после завершения отсчёта
     soundPlayed = False
 
-    start_game_timer(pacman, screen, 3, maze)
+    # start_game_timer(pacman, screen, 3, maze)
 
     while True:
         dt = clock.tick(FPS) / 1000
@@ -156,10 +159,14 @@ def main():
                 soundPlayed = True
             pacman.update(dt)
             ghost.update(dt, pacman)
+            ghost2.update(dt, pacman)
+            
             screen.fill(BLACK)
             draw_maze(screen, maze)
             pacman.draw(screen)
             ghost.draw(screen)
+            ghost2.draw(screen)
+
             draw_points(screen, pacman.points)
             draw_lives(screen, pacman.lives)  # Отображаем оставшиеся жизни
             pygame.display.flip()
@@ -171,16 +178,28 @@ def main():
                 else:
                     pacman.reset_after_death()
                     ghost.reset_after_death()
+                    ghost2.reset_after_death()
                     soundPlayed = False
 
         else:
             pacman.update(dt)
             ghost.update(dt, pacman)
+            ghost2.update(dt, pacman)
+
 
             # Проверка на касание Пакмана и привидения
             if pygame.sprite.collide_circle(pacman, ghost):
                 pacman.die()
                 ghost.die()
+                ghost2.die()
+                
+                pacman.lives -= 1
+
+            if pygame.sprite.collide_circle(pacman, ghost2):
+                pacman.die()
+                ghost.die()
+                ghost2.die()
+                
                 pacman.lives -= 1
 
             if (pacman.points == pacman.total_dot):
@@ -190,6 +209,8 @@ def main():
         draw_maze(screen, maze)
         pacman.draw(screen)
         ghost.draw(screen)
+        ghost2.draw(screen)
+
         draw_points(screen, pacman.points)
         draw_lives(screen, pacman.lives)  # Отображаем оставшиеся жизни
         pygame.display.flip()

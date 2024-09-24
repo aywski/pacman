@@ -123,7 +123,7 @@ class PacMan(pygame.sprite.Sprite):
                     direction = 3
                 self.current_sprite = self.sprites[self.frame + direction * 4]
 
-        self.rect.topleft = (self.x - self.radius, self.y - self.radius)
+        self.rect.center = (self.x - self.radius, self.y - self.radius)
 
     def reset_after_death(self):
         self.is_dead = False

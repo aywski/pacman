@@ -13,7 +13,6 @@ FONT = "fonts/Retro Gaming.ttf"
 
 PACMAN_MOVING_PATH = 'sprites/pacman.png'
 PACMAN_DEATH_PATH = 'sprites/pacman_death.png'
-
 GHOST_DEATH_PATH = 'sprites/frightened_1.png'
 
 PINKY = 'sprites/pinky.png'

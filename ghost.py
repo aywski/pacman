@@ -4,9 +4,10 @@ import heapq
 from typing import List, Tuple, Dict
 import random
 import math
+from algorithms import *
 
 class Ghost(pygame.sprite.Sprite):
-    def __init__(self, maze, speed_multiplier=1.2, skin=BLINKY):
+    def __init__(self, maze, speed_multiplier=1.2, skin=BLINKY, pathfinding_method='a_star'):
         super().__init__()
         self.maze = maze
         self.radius = GRID_SIZE // 2
@@ -27,11 +28,38 @@ class Ghost(pygame.sprite.Sprite):
         self.path = []
         self.next_target = None
         self.path_update_timer = 0
-        self.path_update_interval = 1.0  # Update path every 1 second
+        self.path_update_interval = 1  # Обновляем путь каждые 0.25 секунд
         self.stuck_timer = 0
-        self.stuck_threshold = 0.5  # Consider ghost stuck after 0.5 seconds of no movement
+        self.stuck_threshold = 0.5  # Считаем, что привидение застряло после 0.5 секунд
         self.last_position = (self.x, self.y)
+        self.sight_range = 10  # Диапазон видимости привидения в клетках
+        self.last_seen_pacman = None
+        self.can_see_pacman = False
+        self.pathfinding_method = pathfinding_method
+        self.max_stuck_time = 1.0
 
+    def move_towards_target(self):
+        if self.next_target:
+            target_x, target_y = self.next_target
+            current_x, current_y = int(self.x // GRID_SIZE), int(self.y // GRID_SIZE)
+
+            if target_x > current_x:
+                self.dx, self.dy = 1, 0  # Двигаться вправо
+            elif target_x < current_x:
+                self.dx, self.dy = -1, 0  # Двигаться влево
+            elif target_y > current_y:
+                self.dx, self.dy = 0, 1  # Двигаться вниз
+            elif target_y < current_y:
+                self.dx, self.dy = 0, -1  # Двигаться вверх
+
+            # Теперь двигайтесь на одну клетку в выбранном направлении
+            new_x = current_x + self.dx
+            new_y = current_y + self.dy
+
+            if self.can_move(new_x, current_y):  # Проверка на движение по X
+                self.x = new_x * GRID_SIZE + GRID_SIZE // 2
+            if self.can_move(current_x, new_y):  # Проверка на движение по Y
+                self.y = new_y * GRID_SIZE + GRID_SIZE // 2
 
     def update(self, dt, pacman):
         if self.is_dead:
@@ -69,38 +97,124 @@ class Ghost(pygame.sprite.Sprite):
                     self.next_target = self.path.pop(0)
                 else:
                     self.next_target = None
+                self.stuck_counter = 0
+                self.last_successful_move = (self.x, self.y)
             else:
                 move_x = (dx / distance) * self.speed * dt
                 move_y = (dy / distance) * self.speed * dt
-                
+
                 new_x = self.x + move_x
                 new_y = self.y + move_y
 
-                if self.can_move(new_x, self.y):
+                if self.can_move(new_x, new_y):
                     self.x = new_x
-                if self.can_move(self.x, new_y):
                     self.y = new_y
+                    self.stuck_counter = 0
+                    self.last_successful_move = (self.x, self.y)
+                else:
+                    self.stuck_counter += dt
 
             self.dx = 1 if dx > 0 else (-1 if dx < 0 else 0)
             self.dy = 1 if dy > 0 else (-1 if dy < 0 else 0)
 
+    def can_see(self, pacman):
+        """Проверяет, видит ли привидение Пакмана, по прямой линии (простая проверка видимости)"""
+        ghost_x, ghost_y = int(self.x // GRID_SIZE), int(self.y // GRID_SIZE)
+        pacman_x, pacman_y = int(pacman.x // GRID_SIZE), int(pacman.y // GRID_SIZE)
+
+        if ghost_x == pacman_x or ghost_y == pacman_y:
+            # Проверяем, нет ли стен между привидением и Пакманом
+            if self.is_clear_path(ghost_x, ghost_y, pacman_x, pacman_y):
+                return True
+        return False
+
+    def is_clear_path(self, x1, y1, x2, y2):
+        """Проверяет, есть ли прямая видимость между двумя точками"""
+        if x1 == x2:
+            # Вертикальная проверка
+            for y in range(min(y1, y2), max(y1, y2) + 1):
+                if self.maze[y][x1] == 1:  # Если есть стена
+                    return False
+        elif y1 == y2:
+            # Горизонтальная проверка
+            for x in range(min(x1, x2), max(x1, x2) + 1):
+                if self.maze[y1][x] == 1:
+                    return False
+        return True
+
+    def is_line_of_sight_clear(self, start: Tuple[int, int], goal: Tuple[int, int]) -> bool:
+        """Проверка, не преграждают ли стены путь от привидения к Pac-Man"""
+        x1, y1 = start
+        x2, y2 = goal
+        line_points = self.bresenham(x1, y1, x2, y2)
+        for x, y in line_points:
+            if self.maze[y][x] == 1:  # Если на пути есть стена
+                return False
+        return True
+
+    def bresenham(self, x1, y1, x2, y2) -> List[Tuple[int, int]]:
+        """Алгоритм Брезенхема для расчета всех клеток на линии между двумя точками"""
+        points = []
+        dx = abs(x2 - x1)
+        dy = abs(y2 - y1)
+        sx = 1 if x1 < x2 else -1
+        sy = 1 if y1 < y2 else -1
+        err = dx - dy
+
+        while True:
+            points.append((x1, y1))
+            if x1 == x2 and y1 == y2:
+                break
+            e2 = err * 2
+            if e2 > -dy:
+                err -= dy
+                x1 += sx
+            if e2 < dx:
+                err += dx
+                y1 += sy
+
+        return points
+
+    def distance_to(self, pacman) -> float:
+        """Расчет расстояния до Pac-Man в клетках"""
+        return math.sqrt((self.x - pacman.x) ** 2 + (self.y - pacman.y) ** 2) // GRID_SIZE
+
     def move_randomly(self, dt):
+        """Патрулирует, если нет пути или цели"""
         if not self.next_target:
             self.set_random_adjacent_target()
-        
+
         if self.next_target:
             self.move_along_path(dt)
-
-    def check_if_stuck(self, dt):
-        current_position = (self.x, self.y)
-        if current_position == self.last_position:
-            self.stuck_timer += dt
-            if self.stuck_timer >= self.stuck_threshold:
-                self.set_random_adjacent_target()
-                self.stuck_timer = 0
         else:
-            self.stuck_timer = 0
-        self.last_position = current_position
+            # Добавить дополнительную логику, чтобы не застревать
+            self.set_random_adjacent_target()
+
+    def recalculate_path(self):
+        if self.last_successful_move:
+            start = (int(self.last_successful_move[0] // GRID_SIZE), 
+                     int(self.last_successful_move[1] // GRID_SIZE))
+        else:
+            start = (int(self.x // GRID_SIZE), int(self.y // GRID_SIZE))
+
+        possible_targets = self.get_possible_targets()
+        if possible_targets:
+            goal = random.choice(possible_targets)
+            if self.pathfinding_method == 'a_star':
+                self.path = a_star(start, goal)
+            elif self.pathfinding_method == 'greedy':
+                self.path = greedy_best_first_search(start, goal)
+            elif self.pathfinding_method == 'bfs':
+                self.path = bfs(start, goal)
+            elif self.pathfinding_method == 'dfs':
+                self.path = dfs(start, goal)
+
+            if self.path:
+                self.next_target = self.path.pop(0)
+            else:
+                self.set_random_adjacent_target()
+        else:
+            self.set_random_adjacent_target()
 
     def set_random_adjacent_target(self):
         current_x, current_y = int(self.x // GRID_SIZE), int(self.y // GRID_SIZE)
@@ -114,25 +228,61 @@ class Ghost(pygame.sprite.Sprite):
         if valid_targets:
             self.next_target = random.choice(valid_targets)
             self.path = [self.next_target]  # Обновляем путь
+        else:
+            # Если нет валидных целей, пересчитываем путь
+            self.recalculate_path()
+
+    # Остальные методы остаются без изменений...
+
+    def check_if_stuck(self, dt):
+        if self.stuck_counter >= self.max_stuck_time:
+            print("Привидение застряло, телепортируем на точку спавна.")
+            self.teleport_to_spawn()
+            self.stuck_counter = 0
+
+    def teleport_to_spawn(self):
+        self.x = (self.spawn_x + 0.5) * GRID_SIZE
+        self.y = (self.spawn_y + 0.5) * GRID_SIZE
+        self.rect.topleft = (self.x - self.radius, self.y - self.radius)
+        self.set_random_adjacent_target()  # Задаем новый случайный маршрут
+
+    def get_possible_targets(self):
+        targets = []
+        for y in range(len(self.maze)):
+            for x in range(len(self.maze[0])):
+                if self.is_valid_position(x, y):
+                    targets.append((x, y))
+        return targets
+
+    def is_valid_position(self, x, y):
+        return (0 <= x < len(self.maze[0]) and 0 <= y < len(self.maze) and
+                self.maze[y][x] != 1)  # 1 представляет стены в лабиринте
 
     def can_move(self, x, y):
-        for dx in [-self.radius + 1, self.radius - 1]:
-            for dy in [-self.radius + 1, self.radius - 1]:
-                cell_x = int((x + dx) % (len(self.maze[0]) * GRID_SIZE) // GRID_SIZE)
-                cell_y = int((y + dy) % (len(self.maze) * GRID_SIZE) // GRID_SIZE)
-                if self.maze[cell_y][cell_x] == 1:
-                    return False
-        return True
+        grid_x, grid_y = int(x // GRID_SIZE), int(y // GRID_SIZE)
+        return self.is_valid_position(grid_x, grid_y)
+
 
     def update_path(self, pacman):
         start = (int(self.x // GRID_SIZE), int(self.y // GRID_SIZE))
-        goal = (int(pacman.x // GRID_SIZE), int(pacman.y // GRID_SIZE))
-        self.path = self.a_star(start, goal)
+        if self.can_see(pacman):
+            self.can_see_pacman = True
+            self.last_seen_pacman = (int(pacman.x // GRID_SIZE), int(pacman.y // GRID_SIZE))
+
+        if self.last_seen_pacman:
+            goal = self.last_seen_pacman
+            if self.pathfinding_method == 'a_star':
+                self.path = a_star(start, goal)
+            elif self.pathfinding_method == 'greedy':
+                self.path = greedy_best_first_search(start, goal)
+            elif self.pathfinding_method == 'bfs':
+                self.path = bfs(start, goal)
+            elif self.pathfinding_method == 'dfs':
+                self.path = dfs(start, goal)
+
         if self.path:
             self.next_target = self.path.pop(0)
-            self.stuck_timer = 0  # Сбросить таймер застревания при нахождении нового пути
         else:
-            # Если путь не найден, установить случайную соседнюю клетку как следующую цель
             self.set_random_adjacent_target()
 
     def set_random_adjacent_target(self):
@@ -146,55 +296,23 @@ class Ghost(pygame.sprite.Sprite):
         valid_targets = [t for t in possible_targets if self.is_valid_position(t[0], t[1])]
         if valid_targets:
             self.next_target = random.choice(valid_targets)
+            self.path = [self.next_target]  # Обновляем путь
+        else:
+            # Если нет валидных целей, попробуем найти любую свободную клетку
+            for dx in range(-2, 3):
+                for dy in range(-2, 3):
+                    new_x, new_y = current_x + dx, current_y + dy
+                    if self.is_valid_position(new_x, new_y):
+                        self.next_target = (new_x, new_y)
+                        self.path = [self.next_target]
+                        return
+            
+            # Если все еще нет валидных целей, телепортируем привидение на случайную свободную клетку
+            self.teleport_to_random_position()
 
     def is_valid_position(self, x, y):
         return (0 <= x < len(self.maze[0]) and 0 <= y < len(self.maze) and
                 self.maze[y][x] != 1)  # 1 представляет стены в лабиринте
-
-    def a_star(self, start: Tuple[int, int], goal: Tuple[int, int]) -> List[Tuple[int, int]]:
-        def heuristic(a: Tuple[int, int], b: Tuple[int, int]) -> int:
-            return abs(a[0] - b[0]) + abs(a[1] - b[1])
-
-        def get_neighbors(pos: Tuple[int, int]) -> List[Tuple[int, int]]:
-            x, y = pos
-            neighbors = [(x+1, y), (x-1, y), (x, y+1), (x, y-1)]
-            return [(nx, ny) for nx, ny in neighbors if 0 <= nx < len(self.maze[0]) and 0 <= ny < len(self.maze) and self.maze[ny][nx] != 1]
-
-        start_node = Node(start)
-        start_node.h = heuristic(start, goal)
-        open_list = [start_node]
-        closed_set = set()
-        came_from: Dict[Tuple[int, int], Node] = {}
-
-        while open_list:
-            current = heapq.heappop(open_list)
-
-            if current.position == goal:
-                path = []
-                while current.position != start:
-                    path.append(current.position)
-                    current = came_from[current.position]
-                path.reverse()
-                return path
-
-            closed_set.add(current.position)
-
-            for neighbor_pos in get_neighbors(current.position):
-                if neighbor_pos in closed_set:
-                    continue
-
-                neighbor = Node(neighbor_pos, current.g + 1)
-                neighbor.h = heuristic(neighbor_pos, goal)
-
-                if neighbor not in open_list:
-                    came_from[neighbor_pos] = current
-                    heapq.heappush(open_list, neighbor)
-                elif neighbor.g < current.g:
-                    came_from[neighbor_pos] = current
-                    open_list.remove(neighbor)
-                    heapq.heappush(open_list, neighbor)
-
-        return []
 
     def handle_animation(self, dt):
         self.time_since_last_update += dt
